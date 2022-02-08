@@ -2,7 +2,10 @@
 title: "homework_w1"
 author: "Sarah Hvid Andersen"
 date: "1/2/2022"
-output: html_document
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE} 
