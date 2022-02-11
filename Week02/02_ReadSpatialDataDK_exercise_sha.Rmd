@@ -59,16 +59,15 @@ In this exercise you will read in three shapefiles (parks, playgrounds, and fore
 
 # Read in the forests shapefile
 forests <- st_read("../data/forests.shp")
-?st_read()
 
 # Read in the parks shapefile
-parks <- st_read("../data/forests.shp")
+parks <- st_read("../data/parks.shp")
 
 # Read in the playgrounds shapefile
-playgrounds <- st_read("../data/forests.shp")
+playgrounds <- st_read("../data/playgrounds4326.shp")
 
 # Read in the shelters json
-shelters <- st_read("../data/forests.shp")
+shelters <- st_read("../data/shelters.json")
 
 # View the first few features of all layers
 
@@ -85,10 +84,15 @@ shelters
 ## Questions: 
 
 1. How many features does each layer contain and what kind of geometry are they?
-- 32 features and multi polygon
+- playgrounds - 51 features, 5 fields, points
+- forests - 32 features, 15 fields, and multi polygon
+- parks - 47 features, 10 fields, multipolygon
+- shelters - 19 features and 6 fields
 
 2. What is the CRS value in these objects?
+- NA
 - ETRS89 / UTM zone 32N
+
 
 Well done, now you should see how easy it can be to read in shapefiles and you got your first taste of what an sf object looks like.
 
@@ -301,21 +305,24 @@ Multi-band rasters will have more than one layer. An example is a color aerial p
 
 ```{r loadraster, eval=FALSE, echo=TRUE}
 # Load the raster package
-___(___)
+library(raster)
 
 # Read in the mound elevation single-band raster
-elevation <- ____(___)
+elevation <- raster('DNK_msk_alt.grd')
 
 # Read in the orthophoto image multi-band raster
-aarhus <- brick(_____)
+aarhus <- brick('Aarhus_1m.TIF')
 
 # Get the class for the new objects
-class(___)
-class(___)
+class(elevation)
+class(aarhus)
 
 # Identify how many layers each object has
-nlayers(___)
-nlayers(___)
+nlayers(elevation)
+nlayers(aarhus)
+
+elevation
+aarhus
 ```
 
 *Questions:*
@@ -338,14 +345,16 @@ Instead of storing raster objects in data frames, the `raster` package stores sp
 
 ```{r load raster, eval=FALSE, echo=TRUE}
 # Get the extent of the elevation and aarhus object
-___(___)
+extent(aarhus)
+extent(elevation)
 
 # Get the CRS of the aarhus and elevation object
-___(___)
+crs(aarhus)
+crs(elevation)
 
 # Determine the number of grid cells in both raster objects
-___(aarhus)
-___(elevation)
+ncell(aarhus)
+ncell(elevation)
 ```
 
 
@@ -368,13 +377,16 @@ The raster package has added useful methods for plotting both single and multi-b
 
 ```{r plot raster, eval=FALSE, echo=TRUE }
 # Plot the elevation raster (single raster)
-___
+plot(elevation)
 
 # Plot the aarhus raster (as a single image for each layer)
-___
+plot(aarhus)
 
 # Plot the aarhus raster as an image
-____
+plotRGB(aarhus)
+
+plotRGB(aarhus);plot(elevation, add = TRUE) # doesn't work
+
 ```
 
 
@@ -397,19 +409,21 @@ When the geographic data you read in with `sf` already has a CRS defined both `s
 
 ```{r crs, eval=FALSE}
 # Determine the CRS for the elevation and playgrounds vector objects
-___(forests)
-___(playgrounds)
+st_crs(forests) #ETRS89 / UTM zone 32N 
+st_crs(playgrounds) # NA
 
 # Assign the CRS to playgrounds
-crs_1 <- _____
-___(playgrounds) <- crs_1
+crs_1 <- 4326
+st_crs(playgrounds) <- crs_1
+
+st_crs(playgrounds)
 
 # Determine the CRS for the aarhus and elevation rasters
-___(aarhus)
-___(elevation)
+st_crs(aarhus) #ETRS_1989_UTM_Zone_32N 
+st_crs(elevation) #+proj=longlat +ellps=WGS84 +no_defs 
 
 # Write here the proj4string for the aarhus layer
-crs_2 <- "___"
+crs_2 <- "ETRS_1989_UTM_Zone_32N"
 
 ```
 
@@ -434,17 +448,17 @@ Note that you will use `method = "ngb"` in your call to `projectRaster()` to pre
 
 ```{r crs-assign, eval=FALSE}
 # Get the CRS from the aarhus object
-the_crs <- ___(aarhus, asText = TRUE)
+the_crs <- crs(aarhus, asText = TRUE)
 
 # Project playgrounds to match the CRS of aarhus
-playgrounds_crs <- ___(playgrounds, crs = ___)
+playgrounds_crs <- st_transform(playgrounds, crs = the_crs)
 
 # Project elevation to match the CRS of aarhus
-elevation_crs <- ___(elevation, crs = ___, method = "ngb")
+elevation_crs <- projectRaster(elevation, crs = the_crs, method = "ngb")
 
 # Look at the CRS to see if they match
-___(playgrounds_crs)
-___(elevation_crs)
+st_crs(playgrounds_crs) #+proj=utm +zone=32 +ellps=GRS80 +units=m +no_defs 
+st_crs(elevation_crs) #+proj=utm +zone=32 +ellps=GRS80 +units=m +no_defs 
 
 
 ```
@@ -468,11 +482,11 @@ Make sure `sf`, `raster` and `tmap` are loaded in your workspace.
 * Run the given `tmap` code. Note that `tm_rgb()` is used for multi-layered raster
 
 ```{r plot, eval=FALSE}
+
 # Plot aarhus and playgrounds (run both lines together)
 # Do you see the playgrounds?
-___(aarhus, stretch = "lin")
-___(playgrounds, add = TRUE)
-
+plotRGB(aarhus, stretch = "linear", alpha = 200);plot(playgrounds_crs, col = 'green', lwd = 5, add = TRUE)
+  # stretch doesn't work, not sure how to fix it
 
 # Simply run the tmap code
 library(tmap)
@@ -514,5 +528,8 @@ elevation <- getData("alt", country = "DNK", mask = TRUE)
 municipalities <- getData("GADM", country = "DNK", level = 2)
 DK_border <- getData("GADM", country = "DNK", level = 0)
 
+
+plot(DK_border, col = 'red')
+plot(municipalities, add = TRUE)
 ```
 

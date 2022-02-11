@@ -1,15 +1,14 @@
 ---
 title: "Working with sf objects"
-author: "Adela Sobotkova"
-date: "04-February-2022 updated `r Sys.Date()`"
+author: "Sarah Hvid Andersen"
+date: "11-February-2022 updated `r Sys.Date()`"
 output:
   rmdformats::readthedown:
     highlight: kate
 ---
 
 ```{r setup, include=FALSE}
-library(knitr)
-library(rmdformats) 
+pacman::p_load(knitr, rmdformats) 
 
 ## Global options
 options(max.print="75")
@@ -40,11 +39,10 @@ We will use the sf, raster, and tmap packages.
 Additionally, we will use the spData and spDataLarge packages that provide new datasets.
 
 ```{r}
-library(sf)
-library(raster)
-library(tmap)
-library(spData)
-library(spDataLarge)
+pacman::p_load(sf, raster, tmap, spData, spDataLarge)
+
+#install.packages("spDataLarge", repos = "https://geocompr.r-universe.dev")
+
 ```
 
 
@@ -98,9 +96,22 @@ tm_shape(nz_elev)  +
 ## Your solution
 
 ```{r improved-map}
-# /Start Code/
-
-# /End Code/
+tm_shape(nz_elev)  +
+  tm_raster(title = "Elevation (MASL)", 
+            style = "cont",
+            palette = "-RdYlGn") +
+  tm_shape(nz) +
+  tm_borders(col = "black", 
+             lwd = 2) +
+  tm_scale_bar(breaks = c(0, 50, 100, 150, 200),
+               text.size = 1) +
+  tm_compass(position = c("RIGHT", "top"),
+             type = "rose", 
+             size = 2) +
+  tm_credits(text = "S. Hvid, 10-02-2022") +
+  tm_layout(main.title = "New Zealand",
+            bg.color = "lightblue",
+            inner.margins = c(0, 0, 0, 0))
 ```
 
 
@@ -129,6 +140,16 @@ Type answers to the questions as code comments next to or under the code used
   - What is the coordinate system used?
   - How many attributes does it contain?
   - What is its geometry?
+  
+```{r inspect-data-zion}
+zion #  it is an sf object with 1 feature and 11 fields. it is a polygon
+st_crs(zion) # the coordinate reference system is User input: UTM Zone 12, Northern Hemisphere
+crs(zion, asText = TRUE) #"+proj=utm +zone=12 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+
+extent(zion) # xmin: 302903.1 ymin: 4112244 xmax: 334735.5 ymax: 4153087
+ncell(zion) #12
+plot(zion)
+```
 
 * Display the `srtm` object and view its structure.
 
@@ -142,10 +163,11 @@ Type answers to the questions as code comments next to or under the code used
 ## Your solution and answers
 
 ```{r inspect-data}
-# /Start Code / #
-
-
-# /End Code/ #
+srtm #class: RasterLayer, dimensions 457, 465, 212505  (nrow, ncol, ncell), res 0.0008333333, 0.0008333333  (x, y)
+st_crs(srtm) # WGS 84 (with axis order normalized for visualization) 
+crs(srtm, asText = TRUE) #"+proj=longlat +datum=WGS84 +no_defs"
+nlayers(srtm) #1 layer
+plot(srtm)
 ```
 
 # Exercise 3 - Reconciling Coordinate systems
@@ -167,10 +189,34 @@ Now that you know that coordinate systems differ, make them compatible!
 ## Your solution
 
 ```{r}
-# /Start Code/ #
+# getting the crs of the Zion object
+the_crs <- crs(zion, asText = TRUE)
+
+# creating srtm2, with the crs from zion
+srtm2 <- projectRaster(srtm, crs = the_crs, method = 'ngb') 
+st_crs(srtm2) #+proj=utm +zone=12 +ellps=GRS80 +units=m +no_defs 
+
+plot(srtm2)
 
 
-# /End Code/ #
+#getting the crs of the srtm object
+the_crs2 <- crs(srtm, asText = TRUE)
+
+# creating zion2, with the crs from srtm
+zion2 <- st_transform(zion, crs = the_crs2)
+st_crs(zion2) #+proj=longlat +datum=WGS84 +no_defs 
+
+
+# creating plots
+plot(srtm2);plot(zion2$geom, add = TRUE) # this does not make sense, they were different to begin with so they still would be now?
+
+#taking the second version and the first version of each data set makes more sense. 
+plot(srtm2);plot(zion$geom, lwd = 2, add = TRUE)
+plot(srtm);plot(zion2$geom, lwd = 2, add = TRUE)
+
+
+
+
 ```
 
 
@@ -187,9 +233,27 @@ Make a handsome map of Denmark from data available online with a scale, a north 
 
 ## Your solution
 ```{r}
-# /Start Code/ #
+DKelevation <- getData("alt", country = "DNK", mask = TRUE)
+region <- getData("GADM", country = "DNK", level = 1)
 
 
-# /End Code/ #
+tm_shape(DKelevation)  +
+  tm_raster(title = "Elevation (MASL)", 
+            style = "cont",
+            palette = "RdYlGn") +
+  tm_shape(region) +
+  tm_text("VARNAME_1", size = "AREA", root = 3) +
+  tm_borders(col = "black", 
+             lwd = 1.5) +
+  tm_scale_bar(breaks = c(0, 25, 50, 75, 100),
+               text.size = 0.7) +
+  tm_compass(position = c("RIGHT", "top"),
+             type = "rose", 
+             size = 3) +
+  tm_credits(text = "S. Hvid, 11-02-2022") +
+  tm_layout(main.title = "Denmark",
+            bg.color = "lightblue",
+            inner.margins = c(0, 0, 0, 0),
+            legend.text.size = 0.55)
 ```
 
